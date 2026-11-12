@@ -60,6 +60,14 @@ button,input,select{font:inherit}
 .chance{font-size:12px;color:var(--gold);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}.chance small{display:block;color:#748ba4;font-size:9px;margin-top:2px}
 .note{margin-top:15px;padding:10px;border-left:2px solid #247db0;background:#0b1a29;color:#7f9bb6;font-size:11px;line-height:1.7}
 .footer{border-top:1px solid var(--line);margin-top:28px;padding-top:17px;display:flex;justify-content:space-between;color:#526b84;font-size:10px;letter-spacing:1px;gap:10px}
+.search-box button.clear{background:transparent;box-shadow:none;color:#7f97b2;padding:8px 10px;font-size:15px;font-weight:400;display:none}.search-box button.clear:hover{color:#fff;background:#16314b}.search-box button.clear.show{display:block}
+.reset{width:100%;margin-top:16px;border:1px solid #25415c;background:#0a1420;color:#9bb0c8;border-radius:7px;padding:10px;cursor:pointer;font-size:12px}.reset:hover{border-color:#35c8ff;color:#65d5ff}
+.mob-icon img,.detail-art img{width:100%;height:100%;object-fit:contain;display:block}
+.mob-icon.has-img{background:radial-gradient(circle at 50% 60%,#1d3d5c,#0b1624 70%)}
+.map-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.map-tabs button{font-size:11px;background:#0f2133;border:1px solid #1d3a56;border-radius:5px;padding:4px 8px;color:#bcd3ea;cursor:pointer}.map-tabs button.on{border-color:#35c8ff;color:#65d5ff;background:#123a5a}
+.mapbox{position:relative;width:100%;aspect-ratio:1/1;border-radius:9px;overflow:hidden;border:1px solid #1d3a56;background:#0a1420}.mapbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.mapbox svg{position:absolute;inset:0;width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:#8fa9c5;margin-top:7px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.map-link{float:right;font-size:10px;color:#65d5ff;cursor:pointer;text-decoration:underline}
 .empty{color:#91a8c0;text-align:center;padding:28px;font-size:12px;grid-column:1/-1}
 .seg{display:flex;gap:4px;background:#0a1420;border:1px solid #1d3a56;border-radius:7px;padding:3px}.seg button{border:0;background:transparent;color:#8fa9c5;font-size:11px;padding:5px 9px;border-radius:5px;cursor:pointer}.seg button.on{background:#123a5a;color:#65d5ff}
 @media(max-width:1100px){.main-grid{grid-template-columns:1fr}.detail{position:static}.drop-list{max-height:none}}
@@ -79,7 +87,7 @@ button,input,select{font:inherit}
     <h1>怪物掉落資料庫</h1>
     <p>搜尋怪物、追蹤掉落物，快速掌握冒險情報。</p>
     <div class="search-wrap">
-      <div class="search-box"><span class="search-icon">⌕</span><input id="search" placeholder="輸入怪物名稱、物品名稱或編號…" autocomplete="off"><button id="searchBtn">開始搜尋</button></div>
+      <div class="search-box"><span class="search-icon">⌕</span><input id="search" placeholder="輸入怪物名稱、物品名稱或編號…" autocomplete="off"><button id="clearBtn" class="clear" type="button" title="清除搜尋和所有篩選" aria-label="清除搜尋">✕</button><button id="searchBtn">開始搜尋</button></div>
       <div class="hints">試試看：<a data-q="咕咕">咕咕</a>．<a data-q="水晶" data-mode="item">水晶</a>．<a data-q="泰坦">泰坦</a>．<a data-q="木寶石" data-mode="item">木寶石</a></div>
     </div>
   </section>
@@ -101,7 +109,7 @@ button,input,select{font:inherit}
         <select id="level"><option value="all">全部等級</option><option value="1-30">Lv. 1–30</option><option value="31-60">Lv. 31–60</option><option value="61-100">Lv. 61–100</option><option value="101-150">Lv. 101–150</option><option value="151-9999">Lv. 151 以上</option></select>
         <label for="map">出沒區域</label>
         <select id="map"><option value="all">全部區域</option></select>
-        <label class="check"><input type="checkbox" id="allMon">包含野外不出現的怪物（活動、副本、召喚）</label>
+        <button class="reset" id="resetBtn" type="button">↺　清除所有搜尋與篩選</button>
         <label class="check"><input type="checkbox" id="rateOn"><span>以伺服器掉寶倍率 <b id="rateTxt"></b> 估算</span></label>
       </div>
     </aside>

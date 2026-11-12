@@ -65,6 +65,13 @@
     return '<div class="item-icon' + (big ? ' big' : '') + '"><i style="background-position:-' + x + 'px -' + y + 'px"></i></div>';
   }
   function glyph(name) { var s = name.replace(/^\[[^\]]*\]\s*/, ''); return esc(s.charAt(0) || '?'); }
+  var MONIMG = D.monImg || {};
+  // 怪物頭像：有模型圖就用圖，沒有就用名字第一個字
+  function avatar(m, cls, style) {
+    var k = MONIMG[m.id];
+    return '<div class="' + (cls || 'mob-icon') + ' ' + m.type + (k ? ' has-img' : '') + '"' + (style ? ' style="' + style + '"' : '') + '>' +
+      (k ? '<img src="mon/' + k + '.webp" alt="" loading="lazy">' : glyph(m.name)) + '</div>';
+  }
   function mapList(m) { return m.maps.map(function (x) { return MAPNAME(x[0]); }); }
 
   // ---------- 狀態 ----------
@@ -75,7 +82,7 @@
     var a = S.level.split('-'); return m.lv >= +a[0] && m.lv <= +a[1];
   }
   function mapOk(m) { return S.map === 'all' || m.maps.some(function (x) { return String(x[0]) === S.map; }); }
-  function baseOk(m) { return (S.all || m.field) && levelOk(m) && mapOk(m); }
+  function baseOk(m) { return levelOk(m) && mapOk(m); }
 
   var nameCache = {};
   function dropNames(m) {
@@ -109,7 +116,7 @@
   function monCard(m, extra) {
     var where = m.maps.length ? MAPNAME(m.maps[0][0]) + (m.maps.length > 1 ? ' 等 ' + m.maps.length + ' 區' : '') : '野外不出現';
     return '<div class="monster' + (S.sel === m.id ? ' selected' : '') + '" data-m="' + m.id + '">' +
-      '<div class="mob-icon ' + m.type + '">' + glyph(m.name) + '</div>' +
+      avatar(m) +
       '<div class="txt"><b>' + esc(m.name) + '</b><small>ID：' + m.id + '｜' + TYPE[m.type] + '｜' + esc(where) + '</small></div>' +
       '<span class="level">Lv.' + m.lv + (extra ? '<span class="pc">' + extra + '</span>' : '') + '</span></div>';
   }
@@ -173,6 +180,33 @@
     });
   }
 
+  // ---------- 地圖分布圖 ----------
+  var MAPIMG = {}; (D.mapImg || []).forEach(function (x) { MAPIMG[x] = 1; });
+  var mapSel = {};
+  function dots(pts, r, fill, stroke) {
+    var o = '';
+    for (var i = 0; i + 1 < pts.length; i += 2) o += '<circle cx="' + pts[i] + '" cy="' + (511 - pts[i + 1]) + '" r="' + r + '" fill="' + fill + '"' + (stroke ? ' stroke="' + stroke + '" stroke-width="2"' : '') + '/>';
+    return o;
+  }
+  function mapView(m, mp) {
+    var others = '', n = 0;
+    MON.forEach(function (o) {
+      if (o.id === m.id) return;
+      o.maps.forEach(function (x) { if (x[0] === mp && x[2]) { others += dots(x[2], 4, 'rgba(230,240,255,.55)'); n++; } });
+    });
+    var mine = m.maps.filter(function (x) { return x[0] === mp; })[0];
+    return '<div class="mapbox">' + (MAPIMG[mp] ? '<img src="maps/' + mp + '.jpg" alt="">' : '') +
+      '<svg viewBox="0 0 512 512" preserveAspectRatio="none">' + others + (mine && mine[2] ? dots(mine[2], 7, '#ff5a5a', '#fff') : '') + '</svg></div>' +
+      '<div class="legend"><span><i style="background:#ff5a5a;border:1px solid #fff"></i>' + esc(m.name) + '（' + (mine ? mine[1] : 0) + ' 隻）</span><span><i style="background:rgba(230,240,255,.7)"></i>同地圖其他怪物（' + n + ' 種）</span></div>';
+  }
+  function mapSection(m) {
+    if (!m.maps.length) return '';
+    var cur = mapSel[m.id] || m.maps[0][0];
+    return '<div class="drop-head"><b>地圖分布圖</b><small>紅點＝此怪物出生位置</small></div>' +
+      (m.maps.length > 1 ? '<div class="map-tabs">' + m.maps.map(function (x) { return '<button data-mapview="' + x[0] + '" class="' + (x[0] === cur ? 'on' : '') + '">' + esc(MAPNAME(x[0])) + '</button>'; }).join('') + '</div>' : '') +
+      '<div id="mapView">' + mapView(m, cur) + '</div>';
+  }
+
   function showMonster(id, quiet) {
     var m = MON_BY_ID[id]; if (!m) return;
     S.sel = id; markSel();
@@ -181,10 +215,11 @@
     var maps = m.maps.length ? '<div class="maps">' + m.maps.map(function (x) { return '<span data-map="' + x[0] + '" title="此區數量 ' + x[1] + '">' + esc(MAPNAME(x[0])) + ' ×' + x[1] + '</span>'; }).join('') + '</div>' : '<b>野外不出現（活動、副本或召喚）</b>';
     $('detail').innerHTML =
       '<div class="section-title">MONSTER PROFILE / 怪物資訊</div>' +
-      '<div class="detail-top" style="margin-top:14px"><div class="detail-art mob-icon ' + m.type + '" style="width:64px;height:64px;flex-basis:64px;font-size:28px">' + glyph(m.name) + '</div><div style="min-width:0"><h3>' + esc(m.name) + '</h3><small>MONSTER ID：' + m.id + '</small>' +
+      '<div class="detail-top" style="margin-top:14px">' + avatar(m, 'detail-art mob-icon', 'width:84px;height:84px;flex-basis:84px;font-size:30px') + '<div style="min-width:0"><h3>' + esc(m.name) + '</h3><small>MONSTER ID：' + m.id + '</small>' +
       '<div class="tags"><span class="tag ' + m.type + '">' + TYPE[m.type] + '</span><span class="tag">LV. ' + m.lv + '</span></div></div></div>' +
       '<div class="attributes"><div class="attr"><small>生命值 / HP</small><b>' + m.hp.toLocaleString() + '</b></div><div class="attr"><small>經驗值 / EXP</small><b>' + m.exp.toLocaleString() + '</b></div>' +
       '<div class="attr" style="grid-column:1/-1"><small>出沒區域 / LOCATION（數字為該區數量）</small>' + maps + '</div></div>' +
+      mapSection(m) +
       '<div class="drop-head"><b>掉落物品清單（' + drops.length + '）</b><small>每次擊殺的掉落機率' + (r > 1 ? '・已套用 ×' + r : '') + '</small></div>' +
       '<div class="drop-list">' + (drops.length ? drops.map(function (d) {
         return '<div class="drop" data-i="' + d.item.id + '" title="點一下查看還有哪些怪物會掉">' + icon(d.item) +
@@ -216,7 +251,7 @@
       '<div class="drop-head"><b>掉落來源（依機率排序）</b><small>每次擊殺的掉落機率' + (r > 1 ? '・已套用 ×' + r : '') + '</small></div>' +
       '<div class="drop-list">' + (list.length ? list.map(function (x) {
         var m = x.m, where = m.maps.length ? mapList(m).slice(0, 3).join('、') + (m.maps.length > 3 ? '…' : '') : '野外不出現';
-        return '<div class="drop" data-m="' + m.id + '" title="點一下查看這隻怪物"><div class="item-icon mob-icon ' + m.type + '" style="font-size:15px">' + glyph(m.name) + '</div>' +
+        return '<div class="drop" data-m="' + m.id + '" title="點一下查看這隻怪物">' + avatar(m, 'item-icon mob-icon', 'font-size:15px') +
           '<div class="drop-info"><b>' + esc(m.name) + ' <span style="color:#58cfff;font-weight:400;font-size:10px">Lv.' + m.lv + '</span></b><small>' + esc(where) + '</small></div>' +
           '<span class="chance">' + pct(x.p) + '<small>' + oneIn(x.p) + '</small></span><span class="bar" style="width:' + Math.max(2, x.p / maxP * 100).toFixed(1) + '%"></span></div>';
       }).join('') : '<div class="empty">目前篩選條件下沒有怪物會掉這個物品。</div>') + '</div>' +
@@ -231,7 +266,6 @@
     var h = decodeURIComponent(location.hash.slice(1)), m;
     if ((m = /^m=(\d+)/.exec(h)) && MON_BY_ID[m[1]]) {
       var mon = MON_BY_ID[m[1]];
-      if (!mon.field) { S.all = true; $('allMon').checked = true; }
       setMode('all', true); S.q = mon.name; $('search').value = mon.name; S.shown = PAGE; render(); showMonster(+m[1], true);
       return true;
     }
@@ -252,10 +286,10 @@
   // ---------- 初始化 ----------
   function counts() {
     var c = { all: 0, normal: 0, elite: 0, boss: 0 };
-    MON.forEach(function (m) { if (S.all || m.field) { c.all++; c[m.type]++; } });
+    MON.forEach(function (m) { c.all++; c[m.type]++; });
     Object.keys(c).forEach(function (k) { $('c-' + k).textContent = c[k].toLocaleString(); });
     $('c-item').textContent = Object.keys(D.items).length.toLocaleString();
-    $('sMon').innerHTML = c.all.toLocaleString() + '<em>' + (S.all ? '全部' : '野外') + '怪物</em>';
+    $('sMon').innerHTML = c.all.toLocaleString() + '<em>' + '隻怪物</em>';
   }
   function fillMaps() {
     var cnt = {};
@@ -272,12 +306,19 @@
     if (S.q) setHash('q=' + encodeURIComponent(S.q)); else setHash('');
   }
   $('searchBtn').addEventListener('click', run);
-  var t; $('search').addEventListener('input', function () { clearTimeout(t); t = setTimeout(run, 180); });
+  var t; $('search').addEventListener('input', function () { syncClear(); clearTimeout(t); t = setTimeout(run, 180); });
   $('search').addEventListener('keydown', function (e) { if (e.key === 'Enter') run(); });
-  $('level').addEventListener('change', function () { S.level = this.value; S.shown = PAGE; render(true); });
-  $('map').addEventListener('change', function () { S.map = this.value; S.shown = PAGE; render(true); });
+  $('level').addEventListener('change', function () { S.level = this.value; syncClear(); S.shown = PAGE; render(true); });
+  $('map').addEventListener('change', function () { S.map = this.value; syncClear(); S.shown = PAGE; render(true); });
   $('sort').addEventListener('change', function () { S.sort = this.value; S.shown = PAGE; render(true); });
-  $('allMon').addEventListener('change', function () { S.all = this.checked; counts(); S.shown = PAGE; render(true); });
+  function resetAll() {
+    S.q = ''; S.level = 'all'; S.map = 'all'; S.sort = 'lv'; S.shown = PAGE;
+    $('search').value = ''; $('level').value = 'all'; $('map').value = 'all'; $('sort').value = 'lv';
+    syncClear(); setMode('all', true); render(); setHash('');
+  }
+  function syncClear() { $('clearBtn').classList.toggle('show', !!$('search').value || S.level !== 'all' || S.map !== 'all'); }
+  $('clearBtn').addEventListener('click', resetAll);
+  $('resetBtn').addEventListener('click', resetAll);
   $('rateOn').addEventListener('change', function () { render(true); if (S.mode === 'item') showItem(S.selItem, true); else showMonster(S.sel, true); });
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setMode(b.dataset.filter); });
   $('cards').addEventListener('click', function (e) {
@@ -287,6 +328,8 @@
     if (window.innerWidth <= 1100) $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   $('detail').addEventListener('click', function (e) {
+    var mv = e.target.closest('[data-mapview]');
+    if (mv) { var mm = MON_BY_ID[S.sel]; mapSel[S.sel] = +mv.dataset.mapview; [].forEach.call(document.querySelectorAll('.map-tabs button'), function (b) { b.classList.toggle('on', b === mv); }); $('mapView').innerHTML = mapView(mm, +mv.dataset.mapview); return; }
     var mp = e.target.closest('[data-map]');
     if (mp) { S.map = mp.dataset.map; $('map').value = S.map; S.q = ''; $('search').value = ''; setMode('all'); window.scrollTo({ top: $('cards').getBoundingClientRect().top + scrollY - 90, behavior: 'smooth' }); return; }
     var d = e.target.closest('.drop'); if (!d) return;
@@ -306,4 +349,5 @@
   $('status').textContent = '● 正式服資料';
   counts(); fillMaps();
   if (!fromHash()) render();
+  syncClear();
 })();
