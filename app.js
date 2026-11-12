@@ -61,8 +61,8 @@
   function icon(it, big) {
     var i = it && it.icon >= 0 ? it.icon : -1;
     if (i < 0) return '<div class="item-icon' + (big ? ' big' : '') + '">◇</div>';
-    var c = D.iconCols || 64, x = (i % c) * 32, y = Math.floor(i / c) * 32;
-    return '<div class="item-icon' + (big ? ' big' : '') + '"><i style="background-position:-' + x + 'px -' + y + 'px"></i></div>';
+    var c = D.iconCols || 64, z = big ? 56 : 32, x = (i % c) * z, y = Math.floor(i / c) * z;
+    return '<div class="item-icon' + (big ? ' big' : '') + '"><i style="width:' + z + 'px;height:' + z + 'px;background-size:' + (c * z) + 'px auto;background-position:-' + x + 'px -' + y + 'px"></i></div>';
   }
   function glyph(name) { var s = name.replace(/^\[[^\]]*\]\s*/, ''); return esc(s.charAt(0) || '?'); }
   var MONIMG = D.monImg || {};
@@ -70,7 +70,7 @@
   function avatar(m, cls, style) {
     var k = MONIMG[m.id];
     return '<div class="' + (cls || 'mob-icon') + ' ' + m.type + (k ? ' has-img' : '') + '"' + (style ? ' style="' + style + '"' : '') + '>' +
-      (k ? '<img src="mon/' + k + '.webp" alt="" loading="lazy">' : glyph(m.name)) + '</div>';
+      (k ? '<img src="mon_hd/' + k + '.webp" alt="" loading="lazy">' : glyph(m.name)) + '</div>';
   }
   function mapList(m) { return m.maps.map(function (x) { return MAPNAME(x[0]); }); }
 
@@ -195,7 +195,7 @@
       o.maps.forEach(function (x) { if (x[0] === mp && x[2]) { others += dots(x[2], 4, 'rgba(230,240,255,.55)'); n++; } });
     });
     var mine = m.maps.filter(function (x) { return x[0] === mp; })[0];
-    return '<div class="mapbox">' + (MAPIMG[mp] ? '<img src="maps/' + mp + '.jpg" alt="">' : '') +
+    return '<div class="mapbox">' + (MAPIMG[mp] ? '<img src="maps/' + mp + '.webp" alt="">' : '') +
       '<svg viewBox="0 0 512 512" preserveAspectRatio="none">' + others + (mine && mine[2] ? dots(mine[2], 7, '#ff5a5a', '#fff') : '') + '</svg></div>' +
       '<div class="legend"><span><i style="background:#ff5a5a;border:1px solid #fff"></i>' + esc(m.name) + '（' + (mine ? mine[1] : 0) + ' 隻）</span><span><i style="background:rgba(230,240,255,.7)"></i>同地圖其他怪物（' + n + ' 種）</span></div>';
   }
