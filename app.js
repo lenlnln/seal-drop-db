@@ -13,7 +13,52 @@
   var MON_BY_ID = {};
   MON.forEach(function (m) { MON_BY_ID[m.id] = m; });
   var ITEM = {};
-  Object.keys(D.items).forEach(function (k) { var v = D.items[k]; ITEM[k] = { id: +k, name: v[0], kind: v[1], icon: v[2] }; });
+  Object.keys(D.items).forEach(function (k) { var v = D.items[k]; ITEM[k] = { id: +k, name: v[0], kind: v[1], icon: v[2], mask: v[3] || 0 }; });
+
+  // ---------- 物品分類 ----------
+  // 職業：item.scr 職業位元（一轉、二轉兩種都算）
+  var JOBS = [['劍士', 2 | 512 | 1024], ['騎士', 4 | 2048 | 4096], ['小丑', 8 | 8192 | 16384], ['法師', 16 | 32768 | 65536],
+    ['祭司', 32 | 131072 | 262144], ['鐵匠', 64 | 524288 | 1048576], ['射手', 2097152 | 4194304 | 8388608], ['美食家', 16777216 | 33554432 | 67108864]];
+  var KIND = { 0: '材料', 1: '補品', 3: '道具', 4: '單手劍', 6: '雙手劍', 7: '匕首', 8: '榔頭', 9: '鎚', 11: '法杖', 14: '盾牌', 15: '盔甲（上）', 16: '上衣',
+    17: '頭盔', 18: '帽子', 19: '長靴', 20: '鞋子', 21: '飾品', 22: '寵物', 23: '寶石', 24: '委託書信', 25: '盔甲（下）', 26: '下褲', 27: '鍛造書',
+    41: '寶箱', 42: '鑰匙', 46: '彈弓', 47: '弓', 48: '槍', 50: '套裝', 51: '湯匙', 52: '湯杓', 53: '麵包', 54: '損壞的裝備' };
+  for (var k29 = 29; k29 <= 40; k29++) KIND[k29] = '轉職武器';
+  var WEAPON = { 4: 1, 6: 1, 7: 1, 8: 1, 9: 1, 11: 1, 46: 1, 47: 1, 48: 1, 51: 1, 52: 1, 53: 1 };
+  for (var w = 29; w <= 40; w++) WEAPON[w] = 1;
+  var ARMOR = { 14: 1, 15: 1, 16: 1, 17: 1, 18: 1, 19: 1, 20: 1, 21: 1, 25: 1, 26: 1, 50: 1 };
+  var TOOL = { 3: 1, 23: 1, 27: 1, 41: 1, 42: 1 };
+  var CAT = { weapon: '武器', armor: '防具', tool: '道具', misc: '物品', quest: '委託', potion: '補品', pet: '寵物', evo: '寵物進化物品' };
+  var QUEST = D.quest || {}, SHOP = {}, BOXREV = {}, EVOTO = {}, EVOFROM = {}, EVOMAT = {};
+  (D.shop || []).forEach(function (i) { SHOP[i] = 1; });
+  Object.keys(D.boxes || {}).forEach(function (b) { D.boxes[b].forEach(function (r) { (BOXREV[r[0]] = BOXREV[r[0]] || []).push({ box: +b, p: r[1] / 1e6 }); }); });
+  (D.evo || []).forEach(function (r) {
+    var e = { from: r[0], to: r[1], grow: r[2], mats: r[3], ok: r[4] };
+    (EVOTO[r[1]] = EVOTO[r[1]] || []).push(e); (EVOFROM[r[0]] = EVOFROM[r[0]] || []).push(e);
+    r[3].forEach(function (m) { (EVOMAT[m] = EVOMAT[m] || []).push(e); });
+  });
+  function isWeapon(it) { return !!WEAPON[it.kind]; }
+  function isArmor(it) { return !!ARMOR[it.kind]; }
+  function hasCat(it, c) {
+    switch (c) {
+      case 'weapon': return isWeapon(it);
+      case 'armor': return isArmor(it);
+      case 'tool': return !!TOOL[it.kind];
+      case 'potion': return it.kind === 1;
+      case 'pet': return it.kind === 22;
+      case 'quest': return it.kind === 24 || !!QUEST[it.id];
+      case 'evo': return !!EVOMAT[it.id];
+      case 'misc': return !isWeapon(it) && !isArmor(it) && !TOOL[it.kind] && it.kind !== 1 && it.kind !== 22 && it.kind !== 24;
+    }
+    return true;
+  }
+  function jobsOf(it) {
+    if (!isWeapon(it) && !isArmor(it)) return null;
+    var m = it.mask;
+    if (m >= 0 && m <= 4) return JOBS.map(function (j) { return j[0]; });      // 套裝編號，全職業
+    return JOBS.filter(function (j) { return m & j[1]; }).map(function (j) { return j[0]; });
+  }
+  function jobOk(it, job) { var j = jobsOf(it); return !!j && j.indexOf(job) >= 0; }
+  function itemObj(id) { return ITEM[id] || { id: id, name: '物品 ' + id, icon: -1, kind: -1, mask: 0 }; }
   var MAPNAME = function (id) { return D.maps[id] || ('地圖 ' + id); };
 
   // 每隻怪物的掉落：同一物品在同一張表的機率相加；三張表各自獨立抽一次 → 合計 = 1 - Π(1 - p表)
@@ -75,7 +120,7 @@
   function mapList(m) { return m.maps.map(function (x) { return MAPNAME(x[0]); }); }
 
   // ---------- 狀態 ----------
-  var S = { mode: 'all', q: '', level: 'all', map: 'all', all: false, sort: 'lv', shown: PAGE, sel: null, selItem: null };
+  var S = { mode: 'all', q: '', level: 'all', map: 'all', all: false, sort: 'lv', shown: PAGE, sel: null, selItem: null, cat: 'all', job: 'all', src: 'all' };
 
   function levelOk(m) {
     if (S.level === 'all') return true;
@@ -122,27 +167,44 @@
   }
 
   // ---------- 物品列表 ----------
+  function srcOf(it, list) {
+    return { drop: list.length, box: (BOXREV[it.id] || []).length, shop: !!SHOP[it.id], evo: (EVOTO[it.id] || []).length };
+  }
   function itemMatches() {
-    var R = rev(), q = S.q.toLowerCase();
+    var R = rev(), q = S.q.toLowerCase(), area = S.level !== 'all' || S.map !== 'all';
     var out = [];
-    Object.keys(R).forEach(function (k) {
-      var it = ITEM[k]; if (!it) return;
+    Object.keys(ITEM).forEach(function (k) {
+      var it = ITEM[k];
       if (q && it.name.toLowerCase().indexOf(q) < 0 && String(it.id) !== q) return;
-      var list = R[k].filter(function (x) { return baseOk(x.m); });
-      if (!list.length) return;
+      if (S.cat !== 'all' && !hasCat(it, S.cat)) return;
+      if (S.job !== 'all' && !jobOk(it, S.job)) return;
+      var list = (R[k] || []).filter(function (x) { return baseOk(x.m); });
+      if (area && !list.length) return;
+      var src = srcOf(it, list);
+      if (S.src !== 'all' && !src[S.src]) return;
+      if (S.cat === 'all' && !src.drop && !src.box && !src.shop && !src.evo) return;
       var best = 0; list.forEach(function (x) { if (x.p > best) best = x.p; });
-      out.push({ it: it, n: list.length, best: best });
+      out.push({ it: it, n: list.length, best: best, src: src });
     });
     out.sort(S.sort === 'id' ? function (a, b) { return a.it.id - b.it.id; } :
       S.sort === 'name' ? function (a, b) { return a.it.name.localeCompare(b.it.name, 'zh-Hant'); } :
-      function (a, b) { return b.n - a.n || a.it.id - b.it.id; });
+      function (a, b) { return b.n - a.n || b.src.box - a.src.box || a.it.id - b.it.id; });
     return out;
+  }
+  function srcText(x) {
+    var t = [];
+    if (x.n) t.push(x.n + ' 種怪物會掉');
+    if (x.src.box) t.push('寶箱開出');
+    if (x.src.shop) t.push('NPC 商店');
+    if (x.src.evo) t.push('寵物進化');
+    return t.length ? t.join('・') : '無取得來源';
   }
   function itemCard(x) {
     var r = rate(), best = Math.min(1, x.best * r);
+    var right = x.n ? '最高<span class="pc">' + pct(best) + '</span>' : '<span class="pc" style="color:#8fa9c5">' + (x.src.shop ? '商店' : x.src.box ? '寶箱' : x.src.evo ? '進化' : '—') + '</span>';
     return '<div class="monster' + (S.selItem === x.it.id ? ' selected' : '') + '" data-i="' + x.it.id + '">' + icon(x.it) +
-      '<div class="txt"><b>' + esc(x.it.name) + '</b><small>ITEM ID：' + x.it.id + '｜' + x.n + ' 種怪物會掉</small></div>' +
-      '<span class="level">最高<span class="pc">' + pct(best) + '</span></span></div>';
+      '<div class="txt"><b>' + esc(x.it.name) + '</b><small>' + esc(KIND[x.it.kind] || '其他') + '｜' + srcText(x) + '</small></div>' +
+      '<span class="level">' + right + '</span></div>';
   }
 
   // ---------- 繪製 ----------
@@ -151,8 +213,8 @@
     var cards = $('cards');
     if (S.mode === 'item') {
       current = itemMatches();
-      $('listTitle').textContent = '物品反查';
-      $('listSub').textContent = 'ITEM LOOKUP ／ 輸入物品名稱，查看哪些怪物會掉、機率多少';
+      $('listTitle').textContent = S.cat === 'all' ? '物品反查' : '物品分類：' + CAT[S.cat] + (S.job !== 'all' ? '（' + S.job + '）' : '');
+      $('listSub').textContent = 'ITEM LOOKUP ／ 輸入物品名稱，查看取得方式：怪物掉落、寶箱、商店、寵物進化';
       $('listHead').textContent = 'ITEM LIST / 物品列表';
       $('resultCount').textContent = '找到 ' + current.length.toLocaleString() + ' 種物品';
       cards.innerHTML = current.length ? current.slice(0, S.shown).map(itemCard).join('') + more() : empty();
@@ -244,19 +306,59 @@
       return { m: x.m, p: d ? d.p : x.p };
     }).sort(function (a, b) { return b.p - a.p || a.m.lv - b.m.lv; });
     var maxP = list.length ? list[0].p : 1;
-    $('detail').innerHTML =
-      '<div class="section-title">ITEM PROFILE / 物品資訊</div>' +
+    var jobs = jobsOf(it), tags = '<span class="tag">' + esc(KIND[it.kind] || '其他') + '</span>';
+    if (jobs) tags += '<span class="tag">' + (jobs.length === JOBS.length ? '全職業' : jobs.length ? jobs.join('、') : '無職業限制資料') + '</span>';
+    if (list.length) tags += '<span class="tag">' + list.length + ' 種怪物會掉</span><span class="tag boss">最高 ' + pct(maxP) + '</span>';
+    if (SHOP[id]) tags += '<span class="tag elite">NPC 商店有賣</span>';
+    if (hasCat(it, 'quest')) tags += '<span class="tag">委託</span>';
+    if (EVOMAT[id]) tags += '<span class="tag">寵物進化物品</span>';
+    var html = '<div class="section-title">ITEM PROFILE / 物品資訊</div>' +
       '<div class="detail-top" style="margin-top:14px">' + icon(it, true) + '<div style="min-width:0"><h3>' + esc(it.name) + '</h3><small>ITEM ID：' + it.id + '</small>' +
-      '<div class="tags"><span class="tag">' + list.length + ' 種怪物會掉</span>' + (list.length ? '<span class="tag boss">最高 ' + pct(maxP) + '</span>' : '') + '</div></div></div>' +
-      '<div class="drop-head"><b>掉落來源（依機率排序）</b><small>每次擊殺的掉落機率' + (r > 1 ? '・已套用 ×' + r : '') + '</small></div>' +
+      '<div class="tags">' + tags + '</div></div></div>';
+    var other = (BOXREV[id] || []).length || SHOP[id] || EVOTO[id] || EVOFROM[id] || EVOMAT[id] || QUEST[id] || D.boxes && D.boxes[id];
+    if (list.length || !other) {
+      html += '<div class="drop-head"><b>怪物掉落（依機率排序）</b><small>每次擊殺的掉落機率' + (r > 1 ? '・已套用 ×' + r : '') + '</small></div>' +
       '<div class="drop-list">' + (list.length ? list.map(function (x) {
         var m = x.m, where = m.maps.length ? mapList(m).slice(0, 3).join('、') + (m.maps.length > 3 ? '…' : '') : '野外不出現';
         return '<div class="drop" data-m="' + m.id + '" title="點一下查看這隻怪物">' + avatar(m, 'item-icon mob-icon', 'font-size:15px') +
           '<div class="drop-info"><b>' + esc(m.name) + ' <span style="color:#58cfff;font-weight:400;font-size:10px">Lv.' + m.lv + '</span></b><small>' + esc(where) + '</small></div>' +
           '<span class="chance">' + pct(x.p) + '<small>' + oneIn(x.p) + '</small></span><span class="bar" style="width:' + Math.max(2, x.p / maxP * 100).toFixed(1) + '%"></span></div>';
-      }).join('') : '<div class="empty">目前篩選條件下沒有怪物會掉這個物品。</div>') + '</div>' +
-      '<div class="note">※ 已套用左側的等級、區域篩選。想看活動、副本怪物，請勾選「包含野外不出現的怪物」。</div>';
+      }).join('') : '<div class="empty">目前篩選條件下沒有怪物會掉這個物品。</div>') + '</div>';
+    }
+    var bx = (BOXREV[id] || []).slice().sort(function (a, b) { return b.p - a.p; });
+    if (bx.length) html += '<div class="drop-head"><b>寶箱開出（' + bx.length + '）</b><small>開一次箱子的機率</small></div><div class="drop-list">' +
+      bx.map(function (x) { return itemRow(itemObj(x.box), pct(x.p), oneIn(x.p)); }).join('') + '</div>';
+    if (D.boxes && D.boxes[id]) {
+      var inside = D.boxes[id].slice().sort(function (a, b) { return b[1] - a[1]; });
+      html += '<div class="drop-head"><b>寶箱內容（' + inside.length + '）</b><small>開一次箱子的機率</small></div><div class="drop-list">' +
+        inside.map(function (x) { return itemRow(itemObj(x[0]), pct(x[1] / 1e6), oneIn(x[1] / 1e6)); }).join('') + '</div>';
+    }
+    if (SHOP[id]) html += '<div class="drop-head"><b>NPC 商店</b><small>可直接向 NPC 購買</small></div><div class="note" style="margin-top:6px">這個物品在 NPC 商店有販售。</div>';
+    if (QUEST[id]) html += '<div class="drop-head"><b>委託（' + QUEST[id].length + '）</b><small>交這個物品的委託</small></div><div class="drop-list">' +
+      QUEST[id].map(function (q) { return '<div class="drop"><div class="drop-info"><b>' + (q[0] === 13 ? '低級委託' : q[0] === 521 ? '高級委託' : '委託 #' + q[0]) + '</b><small>需要交 ' + q[1] + ' 個</small></div></div>'; }).join('') + '</div>';
+    if (EVOTO[id]) html += '<div class="drop-head"><b>由寵物進化取得（' + EVOTO[id].length + '）</b><small>原寵物＋材料</small></div><div class="drop-list">' + EVOTO[id].map(function (e) { return evoRow(e, e.from, '由'); }).join('') + '</div>';
+    if (EVOFROM[id]) html += '<div class="drop-head"><b>可進化成（' + EVOFROM[id].length + '）</b><small>進化後的寵物＋材料</small></div><div class="drop-list">' + EVOFROM[id].map(function (e) { return evoRow(e, e.to, '成'); }).join('') + '</div>';
+    if (EVOMAT[id]) {
+      var em = EVOMAT[id].slice(0, 60);
+      html += '<div class="drop-head"><b>可用於寵物進化（' + EVOMAT[id].length + '）</b><small>原寵物 → 進化後</small></div><div class="drop-list">' +
+        em.map(function (e) { var a = itemObj(e.from), b = itemObj(e.to); return '<div class="drop" data-i="' + b.id + '">' + icon(a) + '<div class="drop-info"><b>' + esc(a.name) + ' → ' + esc(b.name) + '</b><small>成長值 ' + e.grow + '・成功率 ' + e.ok + '%</small></div>' + icon(b) + '</div>'; }).join('') +
+        (EVOMAT[id].length > em.length ? '<div class="note">還有 ' + (EVOMAT[id].length - em.length) + ' 種進化也能用，請改搜尋寵物名稱查看。</div>' : '') + '</div>';
+    }
+    html += '<div class="note">※ 怪物掉落已套用左側的等級、區域篩選。寶箱內容取自伺服器 drop_1 掉落表；寵物進化取自伺服器進化配方（p_change）。</div>';
+    $('detail').innerHTML = html;
     if (!quiet) setHash('i=' + id);
+  }
+
+  function itemRow(it, a, b) {
+    return '<div class="drop" data-i="' + it.id + '" title="點一下查看這個物品">' + icon(it) +
+      '<div class="drop-info"><b>' + esc(it.name) + '</b><small>' + esc(KIND[it.kind] || '其他') + '</small></div>' +
+      '<span class="chance">' + a + '<small>' + (b || '') + '</small></span></div>';
+  }
+  function evoRow(e, pid, dir) {
+    var p = itemObj(pid);
+    return '<div class="drop evo" data-i="' + p.id + '" title="點一下查看這隻寵物">' + icon(p) +
+      '<div class="drop-info"><b>' + (dir === '由' ? '由 ' : '進化成 ') + esc(p.name) + '</b><small>需要成長值 ' + e.grow + '・成功率 ' + e.ok + '%・可用材料：</small>' +
+      '<div class="mats">' + e.mats.map(function (m) { var it = itemObj(m); return '<span data-i="' + m + '" title="' + esc(it.name) + '">' + icon(it) + '<em>' + esc(it.name) + '</em></span>'; }).join('') + '</div></div></div>';
   }
 
   // ---------- 網址（可分享） ----------
@@ -277,9 +379,12 @@
     return false;
   }
 
-  function setMode(mode, silent) {
+  function setMode(mode, silent, cat) {
     S.mode = mode; S.shown = PAGE;
-    [].forEach.call(document.querySelectorAll('#nav button'), function (b) { b.classList.toggle('active', b.dataset.filter === mode); });
+    if (cat !== undefined) S.cat = cat;
+    if (mode !== 'item') S.cat = 'all';
+    [].forEach.call(document.querySelectorAll('#nav button,#nav2 button'), function (b) { b.classList.toggle('active', b.dataset.filter === mode && (mode !== 'item' || (b.dataset.cat || 'all') === S.cat)); });
+    $('itemFilters').style.display = mode === 'item' ? '' : 'none';
     if (!silent) render();
   }
 
@@ -288,7 +393,15 @@
     var c = { all: 0, normal: 0, elite: 0, boss: 0 };
     MON.forEach(function (m) { c.all++; c[m.type]++; });
     Object.keys(c).forEach(function (k) { $('c-' + k).textContent = c[k].toLocaleString(); });
-    $('c-item').textContent = Object.keys(D.items).length.toLocaleString();
+    var cc = { all: 0 }; Object.keys(CAT).forEach(function (k) { cc[k] = 0; });
+    var R = rev();
+    Object.keys(ITEM).forEach(function (k) {
+      var it = ITEM[k], src = srcOf(it, R[k] || []);
+      if (src.drop || src.box || src.shop || src.evo) cc.all++;
+      Object.keys(CAT).forEach(function (c) { if (hasCat(it, c)) cc[c]++; });
+    });
+    Object.keys(cc).forEach(function (k) { var el = $('c-cat-' + k); if (el) el.textContent = cc[k].toLocaleString(); });
+    $('job').innerHTML = '<option value="all">全部職業</option>' + JOBS.map(function (j) { return '<option value="' + j[0] + '">' + j[0] + '</option>'; }).join('');
     $('sMon').innerHTML = c.all.toLocaleString() + '<em>' + '隻怪物</em>';
   }
   function fillMaps() {
@@ -312,15 +425,18 @@
   $('map').addEventListener('change', function () { S.map = this.value; syncClear(); S.shown = PAGE; render(true); });
   $('sort').addEventListener('change', function () { S.sort = this.value; S.shown = PAGE; render(true); });
   function resetAll() {
-    S.q = ''; S.level = 'all'; S.map = 'all'; S.sort = 'lv'; S.shown = PAGE;
-    $('search').value = ''; $('level').value = 'all'; $('map').value = 'all'; $('sort').value = 'lv';
+    S.q = ''; S.level = 'all'; S.map = 'all'; S.sort = 'lv'; S.shown = PAGE; S.cat = 'all'; S.job = 'all'; S.src = 'all';
+    $('search').value = ''; $('level').value = 'all'; $('map').value = 'all'; $('sort').value = 'lv'; $('job').value = 'all'; $('src').value = 'all';
     syncClear(); setMode('all', true); render(); setHash('');
   }
-  function syncClear() { $('clearBtn').classList.toggle('show', !!$('search').value || S.level !== 'all' || S.map !== 'all'); }
+  function syncClear() { $('clearBtn').classList.toggle('show', !!$('search').value || S.level !== 'all' || S.map !== 'all' || S.job !== 'all' || S.src !== 'all' || S.cat !== 'all'); }
   $('clearBtn').addEventListener('click', resetAll);
   $('resetBtn').addEventListener('click', resetAll);
   $('rateOn').addEventListener('change', function () { render(true); if (S.mode === 'item') showItem(S.selItem, true); else showMonster(S.sel, true); });
   $('nav').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setMode(b.dataset.filter); });
+  $('nav2').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { setMode('item', false, b.dataset.cat || 'all'); syncClear(); } });
+  $('job').addEventListener('change', function () { S.job = this.value; syncClear(); S.shown = PAGE; render(); });
+  $('src').addEventListener('change', function () { S.src = this.value; syncClear(); S.shown = PAGE; render(); });
   $('cards').addEventListener('click', function (e) {
     if (e.target.id === 'more') { S.shown += PAGE; render(true); return; }
     var c = e.target.closest('.monster'); if (!c) return;
@@ -332,7 +448,7 @@
     if (mv) { var mm = MON_BY_ID[S.sel]; mapSel[S.sel] = +mv.dataset.mapview; [].forEach.call(document.querySelectorAll('.map-tabs button'), function (b) { b.classList.toggle('on', b === mv); }); $('mapView').innerHTML = mapView(mm, +mv.dataset.mapview); return; }
     var mp = e.target.closest('[data-map]');
     if (mp) { S.map = mp.dataset.map; $('map').value = S.map; S.q = ''; $('search').value = ''; setMode('all'); window.scrollTo({ top: $('cards').getBoundingClientRect().top + scrollY - 90, behavior: 'smooth' }); return; }
-    var d = e.target.closest('.drop'); if (!d) return;
+    var d = e.target.closest('.mats [data-i]') || e.target.closest('.drop'); if (!d) return;
     if (d.dataset.i) { var it = ITEM[d.dataset.i]; setMode('item', true); S.q = it.name; $('search').value = it.name; render(); showItem(it.id); }
     else if (d.dataset.m) { var m = MON_BY_ID[d.dataset.m]; setMode('all', true); S.q = m.name; $('search').value = m.name; render(); showMonster(m.id); }
   });
@@ -343,11 +459,11 @@
 
   $('rateTxt').textContent = '×' + (D.dropRate || 1);
   if ((D.dropRate || 1) <= 1) $('rateOn').closest('label').style.display = 'none';
-  $('sItem').innerHTML = Object.keys(D.items).length.toLocaleString() + '<em>種掉落物</em>';
+  $('sItem').innerHTML = Object.keys(D.items).length.toLocaleString() + '<em>種物品</em>';
   $('sVer').innerHTML = esc(D.version) + '<em>正式服</em>';
   $('footVer').textContent = '資料更新：' + D.version + '・掉寶倍率 ×' + (D.dropRate || 1);
   $('status').textContent = '● 正式服資料';
-  counts(); fillMaps();
+  counts(); fillMaps(); $('itemFilters').style.display = 'none';
   if (!fromHash()) render();
   syncClear();
 })();

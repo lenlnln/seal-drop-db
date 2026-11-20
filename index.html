@@ -65,6 +65,7 @@ button,input,select{font:inherit}
 .mob-icon img,.detail-art img{width:100%;height:100%;object-fit:contain;display:block}
 .mob-icon.has-img{background:radial-gradient(circle at 50% 60%,#1d3d5c,#0b1624 70%)}
 .map-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.map-tabs button{font-size:11px;background:#0f2133;border:1px solid #1d3a56;border-radius:5px;padding:4px 8px;color:#bcd3ea;cursor:pointer}.map-tabs button.on{border-color:#35c8ff;color:#65d5ff;background:#123a5a}
+.drop.evo{align-items:flex-start}.mats{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.mats span{display:inline-flex;align-items:center;gap:4px;background:#0c1a29;border:1px solid #1d3a56;border-radius:6px;padding:2px 6px 2px 2px;cursor:pointer;font-size:11px;color:#b9cce0}.mats span:hover{border-color:#3a8ac0}.mats .item-icon{width:24px;height:24px;flex-basis:24px}.mats .item-icon i{transform:scale(.7);transform-origin:center}.mats em{font-style:normal}
 .mapbox{position:relative;width:100%;aspect-ratio:1/1;border-radius:9px;overflow:hidden;border:1px solid #1d3a56;background:#0a1420}.mapbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.mapbox svg{position:absolute;inset:0;width:100%;height:100%}
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:#8fa9c5;margin-top:7px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
 .map-link{float:right;font-size:10px;color:#65d5ff;cursor:pointer;text-decoration:underline}
@@ -100,7 +101,18 @@ button,input,select{font:inherit}
           <button data-filter="normal">◇　一般怪物 <span class="count" id="c-normal"></span></button>
           <button data-filter="elite">◆　菁英怪物 <span class="count" id="c-elite"></span></button>
           <button data-filter="boss">♜　頭目怪物 <span class="count" id="c-boss"></span></button>
-          <button data-filter="item">▧　物品反查 <span class="count" id="c-item"></span></button>
+        </nav>
+        <div class="side-title">物品分類 / ITEMS</div>
+        <nav class="nav" id="nav2">
+          <button data-filter="item" data-cat="all">▧　全部物品 <span class="count" id="c-cat-all"></span></button>
+          <button data-filter="item" data-cat="weapon">⚔　武器 <span class="count" id="c-cat-weapon"></span></button>
+          <button data-filter="item" data-cat="armor">⛨　防具 <span class="count" id="c-cat-armor"></span></button>
+          <button data-filter="item" data-cat="tool">◈　道具 <span class="count" id="c-cat-tool"></span></button>
+          <button data-filter="item" data-cat="misc">▤　物品 <span class="count" id="c-cat-misc"></span></button>
+          <button data-filter="item" data-cat="quest">✉　委託 <span class="count" id="c-cat-quest"></span></button>
+          <button data-filter="item" data-cat="potion">✚　補品 <span class="count" id="c-cat-potion"></span></button>
+          <button data-filter="item" data-cat="pet">❀　寵物取得 <span class="count" id="c-cat-pet"></span></button>
+          <button data-filter="item" data-cat="evo">✦　寵物進化物品 <span class="count" id="c-cat-evo"></span></button>
         </nav>
       </div>
       <div class="filter">
@@ -109,6 +121,10 @@ button,input,select{font:inherit}
         <select id="level"><option value="all">全部等級</option><option value="1-30">Lv. 1–30</option><option value="31-60">Lv. 31–60</option><option value="61-100">Lv. 61–100</option><option value="101-150">Lv. 101–150</option><option value="151-9999">Lv. 151 以上</option></select>
         <label for="map">出沒區域</label>
         <select id="map"><option value="all">全部區域</option></select>
+        <div id="itemFilters"><label>職業（可裝備）</label>
+        <select id="job"><option value="all">全部職業</option></select>
+        <label>取得方式</label>
+        <select id="src"><option value="all">全部取得方式</option><option value="drop">怪物掉落</option><option value="box">寶箱開出</option><option value="shop">NPC 商店</option><option value="evo">寵物進化</option></select></div>
         <button class="reset" id="resetBtn" type="button">↺　清除所有搜尋與篩選</button>
         <label class="check"><input type="checkbox" id="rateOn"><span>以伺服器掉寶倍率 <b id="rateTxt"></b> 估算</span></label>
       </div>
